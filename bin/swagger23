@@ -1,0 +1,113 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# CLI for swagger23 – converts a Swagger 2.0 file to OpenAPI 3.0.
+#
+# Usage:
+#   swagger23 input.json [output.json]
+#   swagger23 input.yaml [output.yaml]
+#   swagger23 input.yaml output.json   # cross-format
+#   swagger23 input.json               # writes to STDOUT (JSON)
+#   cat input.yaml | swagger23         # reads from STDIN, writes to STDOUT (JSON)
+#   swagger23 --version
+#   swagger23 --help
+
+$LOAD_PATH.unshift(File.expand_path("../lib", __dir__))
+require "swagger23"
+require "json"
+
+def usage
+  <<~USAGE
+    Usage:
+      swagger23 [INPUT [OUTPUT]]
+
+    Arguments:
+      INPUT   Path to Swagger 2.0 file (.json or .yaml/.yml).
+              Reads from STDIN if omitted.
+      OUTPUT  Path to write OpenAPI 3.0 result.
+              Format is determined by the file extension:
+                .yaml / .yml  →  YAML output
+                anything else →  JSON output  (default)
+              Writes JSON to STDOUT if omitted.
+
+    Options:
+      -v, --version   Print the gem version and exit.
+      -h, --help      Print this help message and exit.
+
+    Examples:
+      swagger23 petstore.json openapi.json
+      swagger23 petstore.yaml openapi.yaml
+      swagger23 petstore.yaml openapi.json
+      swagger23 petstore.json
+      cat petstore.yaml | swagger23
+  USAGE
+end
+
+# ── Argument parsing ──────────────────────────────────────────────────────────
+
+args = ARGV.dup
+
+if args.include?("--help") || args.include?("-h")
+  puts usage
+  exit 0
+end
+
+if args.include?("--version") || args.include?("-v")
+  puts Swagger23::VERSION
+  exit 0
+end
+
+input_path  = args.shift
+output_path = args.shift
+
+# ── Read input ────────────────────────────────────────────────────────────────
+
+begin
+  raw = input_path ? File.read(input_path, encoding: "utf-8") : $stdin.read
+rescue Errno::ENOENT => e
+  warn "swagger23: #{e.message}"
+  exit 1
+end
+
+# ── Parse input (JSON or YAML, auto-detected) ─────────────────────────────────
+
+begin
+  swagger = Swagger23.parse(raw)
+rescue Swagger23::Error => e
+  warn "swagger23: #{e.message}"
+  exit 1
+end
+
+# ── Convert ───────────────────────────────────────────────────────────────────
+
+begin
+  openapi = Swagger23.convert(swagger)
+rescue Swagger23::InvalidSwaggerError => e
+  warn "swagger23: #{e.message}"
+  exit 2
+rescue => e
+  warn "swagger23: unexpected error: #{e.class}: #{e.message}"
+  warn e.backtrace.first(5).join("\n")
+  exit 3
+end
+
+# ── Serialise to output format ────────────────────────────────────────────────
+
+yaml_output = output_path && output_path.match?(/\.ya?ml\z/i)
+
+if yaml_output
+  require "yaml"
+  output = YAML.dump(openapi)
+else
+  output = JSON.pretty_generate(openapi)
+end
+
+# ── Write output ──────────────────────────────────────────────────────────────
+
+if output_path
+  File.write(output_path, output)
+  format = yaml_output ? "YAML" : "JSON"
+  warn "swagger23: written #{format} to #{output_path}"
+else
+  puts output
+end

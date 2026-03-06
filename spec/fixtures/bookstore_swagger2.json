@@ -1,0 +1,340 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Bookstore API",
+    "description": "A sample bookstore API covering all Swagger 2.0 features",
+    "version": "2.1.0",
+    "termsOfService": "https://example.com/tos",
+    "contact": { "name": "API Team", "email": "api@example.com" },
+    "license": { "name": "MIT", "url": "https://opensource.org/licenses/MIT" },
+    "x-logo": { "url": "https://example.com/logo.png" }
+  },
+  "host": "api.bookstore.io",
+  "basePath": "/v2",
+  "schemes": ["https", "http"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "externalDocs": {
+    "description": "Full documentation",
+    "url": "https://docs.bookstore.io"
+  },
+  "tags": [
+    { "name": "books",   "description": "Book operations" },
+    { "name": "authors", "description": "Author operations" }
+  ],
+  "security": [{ "ApiKeyAuth": [] }],
+  "x-internal-version": "42",
+  "securityDefinitions": {
+    "ApiKeyAuth": {
+      "type": "apiKey",
+      "name": "X-API-Key",
+      "in": "header",
+      "description": "API key for access"
+    },
+    "BasicAuth": {
+      "type": "basic",
+      "description": "HTTP Basic authentication"
+    },
+    "OAuth2Implicit": {
+      "type": "oauth2",
+      "flow": "implicit",
+      "authorizationUrl": "https://auth.bookstore.io/oauth/authorize",
+      "scopes": {
+        "read:books":  "Read books",
+        "write:books": "Write books"
+      }
+    },
+    "OAuth2Password": {
+      "type": "oauth2",
+      "flow": "password",
+      "tokenUrl": "https://auth.bookstore.io/oauth/token",
+      "scopes": { "read:books": "Read books" }
+    },
+    "OAuth2Application": {
+      "type": "oauth2",
+      "flow": "application",
+      "tokenUrl": "https://auth.bookstore.io/oauth/token",
+      "scopes": { "admin": "Admin access" }
+    },
+    "OAuth2AccessCode": {
+      "type": "oauth2",
+      "flow": "accessCode",
+      "authorizationUrl": "https://auth.bookstore.io/oauth/authorize",
+      "tokenUrl": "https://auth.bookstore.io/oauth/token",
+      "scopes": { "read:books": "Read books", "write:books": "Write books" }
+    }
+  },
+  "parameters": {
+    "RequestId": {
+      "name": "X-Request-ID",
+      "in": "header",
+      "type": "string",
+      "description": "Idempotency key",
+      "x-custom": true
+    },
+    "BookId": {
+      "name": "bookId",
+      "in": "path",
+      "required": true,
+      "type": "integer",
+      "format": "int64"
+    }
+  },
+  "responses": {
+    "NotFound": {
+      "description": "Resource not found",
+      "schema": { "$ref": "#/definitions/Error" }
+    },
+    "UnprocessableEntity": {
+      "description": "Validation error",
+      "schema": { "$ref": "#/definitions/ValidationError" },
+      "headers": {
+        "X-Error-Code": { "type": "string", "description": "Machine-readable error code" }
+      }
+    }
+  },
+  "definitions": {
+    "Book": {
+      "type": "object",
+      "required": ["id", "title"],
+      "properties": {
+        "id":     { "type": "integer", "format": "int64" },
+        "title":  { "type": "string" },
+        "isbn":   { "type": "string", "pattern": "^[0-9-]{10,17}$" },
+        "author": { "$ref": "#/definitions/AuthorRef" },
+        "tags":   { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["draft", "published", "archived"] }
+      }
+    },
+    "NewBook": {
+      "allOf": [
+        { "$ref": "#/definitions/Book" },
+        {
+          "type": "object",
+          "required": ["title", "authorId"],
+          "properties": {
+            "authorId": { "type": "integer" }
+          }
+        }
+      ]
+    },
+    "AuthorRef": {
+      "type": "object",
+      "properties": {
+        "id":   { "type": "integer" },
+        "name": { "type": "string" }
+      }
+    },
+    "Author": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id":   { "type": "integer" },
+        "name": { "type": "string" },
+        "bio":  { "type": "string" },
+        "books": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Book" }
+        }
+      }
+    },
+    "Error": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code":    { "type": "integer" },
+        "message": { "type": "string" }
+      }
+    },
+    "ValidationError": {
+      "allOf": [
+        { "$ref": "#/definitions/Error" },
+        {
+          "type": "object",
+          "properties": {
+            "fields": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "paths": {
+    "/books": {
+      "parameters": [
+        { "$ref": "#/parameters/RequestId" }
+      ],
+      "get": {
+        "tags": ["books"],
+        "summary": "List books",
+        "operationId": "listBooks",
+        "parameters": [
+          {
+            "in": "query", "name": "q",
+            "type": "string", "description": "Search query"
+          },
+          {
+            "in": "query", "name": "tags",
+            "type": "array", "items": { "type": "string" },
+            "collectionFormat": "csv",
+            "description": "Filter by tags"
+          },
+          {
+            "in": "query", "name": "status",
+            "type": "array", "items": { "type": "string" },
+            "collectionFormat": "multi"
+          },
+          {
+            "in": "query", "name": "page",
+            "type": "integer", "default": 1, "minimum": 1
+          },
+          {
+            "in": "query", "name": "perPage",
+            "type": "integer", "default": 20, "maximum": 100
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of books",
+            "schema": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/Book" }
+            },
+            "headers": {
+              "X-Total-Count": { "type": "integer", "description": "Total number of results" },
+              "X-Page":        { "type": "integer", "description": "Current page" }
+            }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["books"],
+        "summary": "Create a book",
+        "operationId": "createBook",
+        "security": [{ "OAuth2Implicit": ["write:books"] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "book",
+            "required": true,
+            "description": "Book to create",
+            "schema": { "$ref": "#/definitions/NewBook" }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Book created",
+            "schema": { "$ref": "#/definitions/Book" }
+          },
+          "422": { "$ref": "#/responses/UnprocessableEntity" }
+        }
+      }
+    },
+    "/books/{bookId}": {
+      "parameters": [
+        { "$ref": "#/parameters/BookId" }
+      ],
+      "get": {
+        "tags": ["books"],
+        "summary": "Get a book",
+        "operationId": "getBook",
+        "responses": {
+          "200": {
+            "description": "The book",
+            "schema": { "$ref": "#/definitions/Book" }
+          },
+          "404": { "$ref": "#/responses/NotFound" }
+        }
+      },
+      "put": {
+        "tags": ["books"],
+        "summary": "Update a book",
+        "operationId": "updateBook",
+        "consumes": ["application/json", "application/xml"],
+        "produces": ["application/json", "application/xml"],
+        "deprecated": true,
+        "parameters": [
+          {
+            "in": "body",
+            "name": "book",
+            "required": true,
+            "schema": { "$ref": "#/definitions/Book" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated book",
+            "schema": { "$ref": "#/definitions/Book" }
+          },
+          "404": { "$ref": "#/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["books"],
+        "summary": "Delete a book",
+        "operationId": "deleteBook",
+        "x-idempotent": true,
+        "responses": {
+          "204": { "description": "Deleted" },
+          "404": { "$ref": "#/responses/NotFound" }
+        }
+      }
+    },
+    "/books/{bookId}/cover": {
+      "post": {
+        "tags": ["books"],
+        "summary": "Upload cover image",
+        "operationId": "uploadCover",
+        "consumes": ["multipart/form-data"],
+        "parameters": [
+          { "$ref": "#/parameters/BookId" },
+          { "in": "formData", "name": "cover",   "type": "file",   "required": true },
+          { "in": "formData", "name": "caption", "type": "string"  }
+        ],
+        "responses": {
+          "200": { "description": "Cover uploaded" }
+        }
+      }
+    },
+    "/authors": {
+      "post": {
+        "tags": ["authors"],
+        "summary": "Create an author (form)",
+        "operationId": "createAuthor",
+        "consumes": ["application/x-www-form-urlencoded"],
+        "parameters": [
+          { "in": "formData", "name": "name",    "type": "string",  "required": true },
+          { "in": "formData", "name": "bio",     "type": "string"   },
+          { "in": "formData", "name": "website", "type": "string"   }
+        ],
+        "responses": {
+          "201": {
+            "description": "Author created",
+            "schema": { "$ref": "#/definitions/Author" }
+          }
+        }
+      }
+    },
+    "/authors/{authorId}": {
+      "get": {
+        "tags": ["authors"],
+        "summary": "Get an author",
+        "operationId": "getAuthor",
+        "parameters": [
+          { "in": "path", "name": "authorId", "required": true, "type": "integer" },
+          { "$ref": "#/parameters/RequestId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "The author",
+            "schema": { "$ref": "#/definitions/Author" }
+          },
+          "404": { "$ref": "#/responses/NotFound" }
+        }
+      }
+    }
+  }
+}
