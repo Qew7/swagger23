@@ -7,20 +7,23 @@ Gem::Specification.new do |spec|
   spec.version       = Swagger23::VERSION
   spec.authors       = ["Maxim Veysgeym"]
   spec.email         = []
-  spec.summary       = "Converts Swagger 2.0 specifications to OpenAPI 3.0"
+  spec.summary       = "Convert Swagger 2.0 to OpenAPI 3.0 — Ruby library and CLI"
   spec.description   = <<~DESC
-    A Ruby gem that converts Swagger 2.0 (fka Swagger) API specifications into
-    OpenAPI 3.0.x specifications. Handles paths, parameters, requestBody,
-    components/schemas, securitySchemes, servers, and $ref rewriting.
+    swagger23 converts Swagger 2.0 (OAS 2) API specifications into OpenAPI 3.0.3 (OAS 3)
+    specifications. Accepts JSON or YAML input, produces JSON or YAML output.
+    Works as a Ruby library (Swagger23.convert) or a standalone CLI tool (swagger23).
+    Handles paths, parameters, requestBody, components/schemas, securitySchemes,
+    servers, $ref rewriting, collectionFormat, x-nullable, discriminator, OAuth2 flows,
+    and file uploads. No external runtime dependencies. Safe for large specs.
   DESC
   spec.license       = "MIT"
   spec.homepage      = "https://github.com/Qew7/swagger23"
 
   spec.metadata = {
-    "homepage_uri"    => spec.homepage,
-    "source_code_uri" => spec.homepage,
-    "bug_tracker_uri" => "#{spec.homepage}/issues",
-    "changelog_uri"   => "#{spec.homepage}/blob/main/CHANGELOG.md"
+    "homepage_uri"      => spec.homepage,
+    "source_code_uri"   => spec.homepage,
+    "bug_tracker_uri"   => "#{spec.homepage}/issues",
+    "documentation_uri" => "#{spec.homepage}/blob/main/README.md"
   }
 
   spec.required_ruby_version = ">= 3.2.0"

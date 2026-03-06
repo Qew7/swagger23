@@ -15,12 +15,27 @@ RSpec.describe Swagger23::Converters::Security do
       s = convert("Auth" => { "type" => "basic", "description" => "desc" })["Auth"]
       expect(s["description"]).to eq("desc")
     end
+
+    it "passes through x- extensions on basic auth scheme" do
+      s = convert("Auth" => { "type" => "basic", "x-internal" => true })["Auth"]
+      expect(s["x-internal"]).to be true
+    end
   end
 
   describe "apiKey" do
     subject { convert("Key" => { "type" => "apiKey", "name" => "X-Key", "in" => "header" })["Key"] }
 
     it { is_expected.to include("type" => "apiKey", "name" => "X-Key", "in" => "header") }
+
+    it "works with in: query" do
+      s = convert("Key" => { "type" => "apiKey", "name" => "api_key", "in" => "query" })["Key"]
+      expect(s).to include("type" => "apiKey", "name" => "api_key", "in" => "query")
+    end
+
+    it "works with in: cookie" do
+      s = convert("Key" => { "type" => "apiKey", "name" => "session", "in" => "cookie" })["Key"]
+      expect(s).to include("type" => "apiKey", "name" => "session", "in" => "cookie")
+    end
   end
 
   describe "oauth2 flows" do
@@ -141,6 +156,13 @@ RSpec.describe Swagger23::Converters::Security do
   describe "when securityDefinitions is absent" do
     it "returns an empty hash" do
       expect(described_class.convert({})).to eq({})
+    end
+  end
+
+  describe "when securityDefinitions is present but empty" do
+    it "returns an empty hash (not nil, not the empty hash itself)" do
+      result = described_class.convert("securityDefinitions" => {})
+      expect(result).to eq({})
     end
   end
 end

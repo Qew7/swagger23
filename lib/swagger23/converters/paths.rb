@@ -245,11 +245,17 @@ module Swagger23
         end
 
         # headers
+        # OAS 3.0 Header Object: description stays at the top level; type/format go
+        # inside a nested `schema` object (Header Object mirrors Parameter Object).
         if (headers = response["headers"])
           converted = {}
           headers.each do |name, header|
             h = {}
-            %w[description type format].each { |f| h[f] = header[f] if header.key?(f) }
+            h["description"] = header["description"] if header.key?("description")
+            schema = {}
+            %w[type format].each { |f| schema[f] = header[f] if header.key?(f) }
+            h["schema"] = schema unless schema.empty?
+            header.each { |k, v| h[k] = v if k.start_with?("x-") }
             converted[name] = h
           end
           result["headers"] = converted

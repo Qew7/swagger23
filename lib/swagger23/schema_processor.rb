@@ -34,6 +34,8 @@ module Swagger23
           current.each_value { |v| queue << v if v in Hash | Array }
         in Array
           current.each { |item| queue << item if item in Hash | Array }
+        else
+          # scalar or nil — nothing to transform
         end
       end
 

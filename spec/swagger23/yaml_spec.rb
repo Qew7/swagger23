@@ -80,6 +80,26 @@ RSpec.describe "YAML support" do
           .to raise_error(Swagger23::Error)
       end
     end
+
+    context "with non-UTF-8 encoded input" do
+      it "handles ASCII_8BIT (binary) encoded JSON by re-encoding to UTF-8" do
+        json = '{"swagger":"2.0","info":{"title":"T","version":"1"},"paths":{}}'
+        binary = json.b  # ASCII_8BIT encoding
+        expect(binary.encoding).to eq(Encoding::ASCII_8BIT)
+        result = Swagger23.parse(binary)
+        expect(result).to be_a(Hash)
+        expect(result["swagger"]).to eq("2.0")
+      end
+
+      it "handles ASCII_8BIT encoded YAML by re-encoding to UTF-8" do
+        yaml = "swagger: \"2.0\"\ninfo:\n  title: T\n  version: \"1\"\npaths: {}\n"
+        binary = yaml.b
+        expect(binary.encoding).to eq(Encoding::ASCII_8BIT)
+        result = Swagger23.parse(binary)
+        expect(result).to be_a(Hash)
+        expect(result["swagger"]).to eq("2.0")
+      end
+    end
   end
 
   # ── YAML input → convert → correct OpenAPI 3.0 output ────────────────────
@@ -364,6 +384,43 @@ RSpec.describe "YAML support" do
       output = `echo '#{yaml_source.lines.first.chomp}' | ruby #{cli} 2>/dev/null || true`
       # Just ensure no crash on STDIN path; content tested above
       expect($?).not_to be_nil
+    end
+
+    it "exits with status 1 for a nonexistent input file" do
+      system("ruby #{cli} /no/such/file/spec.json 2>/dev/null")
+      expect($?.exitstatus).to eq(1)
+    end
+
+    it "exits with status 1 for a file that is invalid JSON/YAML" do
+      require "tmpdir"
+      Dir.mktmpdir do |dir|
+        bad = File.join(dir, "bad.json")
+        File.write(bad, "{ this is not valid json }")
+        system("ruby #{cli} #{bad} 2>/dev/null")
+        expect($?.exitstatus).to eq(1)
+      end
+    end
+
+    it "exits with status 2 for a valid JSON file that is not Swagger 2.0" do
+      require "tmpdir"
+      Dir.mktmpdir do |dir|
+        oas3 = File.join(dir, "oas3.json")
+        File.write(oas3, JSON.generate("swagger" => "3.0", "info" => {}, "paths" => {}))
+        system("ruby #{cli} #{oas3} 2>/dev/null")
+        expect($?.exitstatus).to eq(2)
+      end
+    end
+
+    it "prints the gem version and exits 0 for --version" do
+      output = `ruby #{cli} --version 2>/dev/null`.chomp
+      expect(output).to eq(Swagger23::VERSION)
+      expect($?.exitstatus).to eq(0)
+    end
+
+    it "exits 0 and prints usage for --help" do
+      output = `ruby #{cli} --help 2>/dev/null`
+      expect(output).to include("Usage")
+      expect($?.exitstatus).to eq(0)
     end
   end
 end

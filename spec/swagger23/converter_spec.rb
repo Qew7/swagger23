@@ -387,6 +387,99 @@ RSpec.describe Swagger23::Converter do
   end
 
   # ---------------------------------------------------------------------------
+  # Top-level passthrough: tags / externalDocs
+  # ---------------------------------------------------------------------------
+
+  describe "top-level tags" do
+    it "passes through a tags array" do
+      doc = base_swagger.merge(
+        "tags" => [
+          { "name" => "pets",    "description" => "Pet operations" },
+          { "name" => "owners",  "description" => "Owner operations" }
+        ]
+      )
+      expect(convert(doc)["tags"].map { |t| t["name"] })
+        .to contain_exactly("pets", "owners")
+    end
+
+    it "preserves tag description and externalDocs" do
+      doc = base_swagger.merge(
+        "tags" => [
+          { "name" => "pets", "description" => "All about pets",
+            "externalDocs" => { "url" => "https://docs.example.com/pets" } }
+        ]
+      )
+      tag = convert(doc)["tags"].first
+      expect(tag["description"]).to eq("All about pets")
+      expect(tag.dig("externalDocs", "url")).to eq("https://docs.example.com/pets")
+    end
+
+    it "omits tags key when not present in input" do
+      expect(convert(base_swagger)).not_to have_key("tags")
+    end
+  end
+
+  describe "top-level externalDocs" do
+    it "passes through externalDocs" do
+      doc = base_swagger.merge(
+        "externalDocs" => { "url" => "https://docs.example.com", "description" => "Full API docs" }
+      )
+      expect(convert(doc).dig("externalDocs", "url")).to eq("https://docs.example.com")
+      expect(convert(doc).dig("externalDocs", "description")).to eq("Full API docs")
+    end
+
+    it "omits externalDocs key when not present in input" do
+      expect(convert(base_swagger)).not_to have_key("externalDocs")
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Response headers: type / format must be inside schema (OAS 3.0 compliance)
+  # ---------------------------------------------------------------------------
+
+  describe "response header schema placement" do
+    let(:doc) do
+      base_swagger.merge(
+        "paths" => {
+          "/things" => {
+            "get" => {
+              "responses" => {
+                "200" => {
+                  "description" => "ok",
+                  "headers"     => {
+                    "X-Request-Id" => { "type" => "string", "description" => "Trace ID" },
+                    "X-Retry-In"   => { "type" => "integer", "format" => "int32" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      )
+    end
+
+    it "moves type to schema.type in response header" do
+      header = convert(doc).dig("paths", "/things", "get", "responses", "200",
+                                "headers", "X-Request-Id")
+      expect(header.dig("schema", "type")).to eq("string")
+      expect(header).not_to have_key("type")
+    end
+
+    it "moves format to schema.format in response header" do
+      header = convert(doc).dig("paths", "/things", "get", "responses", "200",
+                                "headers", "X-Retry-In")
+      expect(header.dig("schema", "format")).to eq("int32")
+      expect(header).not_to have_key("format")
+    end
+
+    it "preserves description at the header top level" do
+      header = convert(doc).dig("paths", "/things", "get", "responses", "200",
+                                "headers", "X-Request-Id")
+      expect(header["description"]).to eq("Trace ID")
+    end
+  end
+
+  # ---------------------------------------------------------------------------
   # Module-level convenience API
   # ---------------------------------------------------------------------------
 
@@ -433,7 +526,8 @@ RSpec.describe Swagger23::Converter do
       "csv"   => { "style" => "form",            "explode" => false },
       "multi" => { "style" => "form",            "explode" => true  },
       "ssv"   => { "style" => "spaceDelimited",  "explode" => nil   },
-      "pipes" => { "style" => "pipeDelimited",   "explode" => nil   }
+      "pipes" => { "style" => "pipeDelimited",   "explode" => nil   },
+      "tsv"   => { "style" => "tabDelimited",    "explode" => nil   }
     }.each do |fmt, expected|
       it "maps collectionFormat '#{fmt}'" do
         result = convert(param_with_format(fmt))
