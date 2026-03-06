@@ -54,10 +54,7 @@ module Swagger23
         if (headers = resp["headers"])
           converted_headers = {}
           headers.each do |name, header|
-            h = header.dup
-            h.delete("name")
-            h.delete("in")
-            converted_headers[name] = h
+            converted_headers[name] = header.except("name", "in")
           end
           result["headers"] = converted_headers
         end

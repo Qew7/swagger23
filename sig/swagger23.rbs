@@ -1,0 +1,71 @@
+# Type signatures for the swagger23 gem public API.
+# Compatible with Steep, Sorbet (via rbs), and IDEs such as RubyMine / VS Code + ruby-lsp.
+
+module Swagger23
+  VERSION: String
+
+  class Error < StandardError
+  end
+
+  class InvalidSwaggerError < Error
+  end
+
+  # Parse a JSON or YAML string into a Ruby Hash.
+  def self.parse: (String source) -> Hash[String, untyped]
+
+  # Convert a Swagger 2.0 Hash to an OpenAPI 3.0 Hash.
+  def self.convert: (Hash[String, untyped] swagger) -> Hash[String, untyped]
+
+  # Parse and convert, returning a pretty-printed JSON string.
+  def self.convert_string: (String source) -> String
+
+  # Parse and convert, returning a YAML string.
+  def self.convert_to_yaml: (String source) -> String
+
+  # @deprecated Use convert_string instead.
+  def self.convert_json: (String source) -> String
+
+  class Converter
+    SUPPORTED_SWAGGER_VERSION: String
+    TARGET_OPENAPI_VERSION: String
+
+    def initialize: (Hash[String, untyped] swagger) -> void
+    def convert: () -> Hash[String, untyped]
+  end
+
+  module RefRewriter
+    REF_MAP: Hash[String, String]
+
+    def self.rewrite: (untyped obj) -> untyped
+  end
+
+  module SchemaProcessor
+    def self.process: (untyped obj) -> untyped
+  end
+
+  module Converters
+    module Info
+      def self.convert: (Hash[String, untyped] swagger) -> Hash[String, untyped]
+    end
+
+    module Servers
+      def self.convert: (Hash[String, untyped] swagger) -> Array[Hash[String, untyped]]
+    end
+
+    module Paths
+      HTTP_METHODS: Array[String]
+
+      def self.convert: (Hash[String, untyped] swagger) -> Hash[String, untyped]
+    end
+
+    module Components
+      def self.convert: (Hash[String, untyped] swagger) -> Hash[String, untyped]
+    end
+
+    module Security
+      def self.convert: (Hash[String, untyped] swagger) -> Hash[String, untyped]
+    end
+
+    ParameterConverter: singleton(Paths)
+  end
+end

@@ -23,10 +23,11 @@ Gem::Specification.new do |spec|
     "changelog_uri"   => "#{spec.homepage}/blob/main/CHANGELOG.md"
   }
 
-  spec.required_ruby_version = ">= 2.7.0"
+  spec.required_ruby_version = ">= 3.2.0"
 
   spec.files = Dir[
     "lib/**/*.rb",
+    "sig/**/*.rbs",
     "bin/*",
     "swagger23.gemspec",
     "README.md",

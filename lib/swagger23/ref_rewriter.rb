@@ -41,18 +41,21 @@ module Swagger23
         current = queue.shift
 
         case current
-        when Hash
+        in Hash
           current.each_pair do |key, value|
-            if key == "$ref" && value.is_a?(String)
-              current[key] = rewrite_ref(value)
-            elsif value.is_a?(Hash) || value.is_a?(Array)
-              queue << value
+            case [key, value]
+            in ["$ref", String => ref]
+              current[key] = rewrite_ref(ref)
+            in [_, Hash | Array => nested]
+              queue << nested
+            else
+              # primitive value — nothing to traverse
             end
           end
-        when Array
-          current.each do |item|
-            queue << item if item.is_a?(Hash) || item.is_a?(Array)
-          end
+        in Array
+          current.each { |item| queue << item if item in Hash | Array }
+        else
+          # scalar root (e.g. rewrite(42)) — nothing to do
         end
       end
 

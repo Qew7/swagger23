@@ -98,11 +98,11 @@ module Swagger23
   # normalise just in case a caller passes in a symbolised hash.
   def self.stringify_keys_deep(obj)
     case obj
-    when Hash
+    in Hash
       obj.each_with_object({}) do |(k, v), h|
         h[k.to_s] = stringify_keys_deep(v)
       end
-    when Array
+    in Array
       obj.map { |item| stringify_keys_deep(item) }
     else
       obj

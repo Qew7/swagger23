@@ -29,11 +29,11 @@ module Swagger23
         current = queue.shift
 
         case current
-        when Hash
+        in Hash
           transform!(current)
-          current.each_value { |v| queue << v if v.is_a?(Hash) || v.is_a?(Array) }
-        when Array
-          current.each { |item| queue << item if item.is_a?(Hash) || item.is_a?(Array) }
+          current.each_value { |v| queue << v if v in Hash | Array }
+        in Array
+          current.each { |item| queue << item if item in Hash | Array }
         end
       end
 
